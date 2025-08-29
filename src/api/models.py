@@ -325,7 +325,7 @@ class Message(db.Model):
     created_at = db.Column(db.DateTime(timezone=True),
                            server_default=func.current_timestamp())
     dealer_id = db.Column(db.Integer, ForeignKey(
-        'task_dealed.id'), unique=True, nullable=False)
+        'task_dealed.id'), nullable=False)
     sender_id = db.Column(db.Integer, ForeignKey(
         'user.id'), nullable=False)
     user = db.relationship('User', back_populates='messages')
