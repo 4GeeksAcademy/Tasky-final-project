@@ -222,6 +222,8 @@ class TaskOffered(db.Model):
             "task_id": self.task_id,
             "tasker_id": self.tasker_id,
             "status": self.status,
+            "amount": self.amount,
+            "message": self.message,
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
         }
