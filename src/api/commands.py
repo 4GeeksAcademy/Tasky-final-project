@@ -107,7 +107,7 @@ def setup_commands(app):
                 posted_at=date.today(),   # explícito (aunque tengas server_default)
                 assigned_at=None,
                 completed_at=None,
-                status="pending",
+                status="open",
                 publisher_id=u_client.id
             )
             db.session.add(t)
@@ -117,8 +117,9 @@ def setup_commands(app):
             off = TaskOffered(
                 task_id=t.id,
                 tasker_id=u_tasker.id,
-                status="pending"  # acorde a tu modelo actual
-                # si más adelante agregas "message" en el modelo, puedes setearlo aquí
+                status="pending",  # acorde a tu modelo actual
+                amount=Decimal("400.00"),
+                message="¿Te sirve hacerlo hoy?"
             )
             db.session.add(off)
             db.session.flush()
