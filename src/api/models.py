@@ -134,7 +134,7 @@ class Task(db.Model):
     completed_at = db.Column(db.Date, nullable=True)
 
     # business-defined value (app.py)
-    status = db.Column(db.String(30), nullable=False, server_default="pending")
+    status = db.Column(db.String(30), nullable=False, server_default="open")
 
     # FK + relationship (1 User -> many Tasks)
     publisher_id = db.Column(db.Integer, ForeignKey(
@@ -192,6 +192,8 @@ class TaskOffered(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # the values will be defined in the business layer(app.py)
     status = db.Column(db.String, nullable=True, default="pending")
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    message = db.Column(db.Text, nullable=True)
     # dates
     created_at = db.Column(
         db.Date, nullable=False, server_default=func.current_date())
@@ -232,7 +234,7 @@ class TaskDealed(db.Model):
     fixed_price = db.Column(db.Numeric(10, 2), nullable=True)
 
     # the values will be defined in the business layer(app.py)
-    status = db.Column(db.String(30), nullable=False)
+    status = db.Column(db.String(30), nullable=False, default="accepted")
     # dates
     accepted_at = db.Column(db.Date, nullable=True)
     delivered_at = db.Column(db.Date, nullable=True)
