@@ -13,6 +13,7 @@ import ProfilePublic from "./pages/ProfilePublic";
 import AuthCallback from "./pages/AuthCallback";
 import Browse from "./pages/Browse";
 import PostTask from "./pages/PostTask";
+import TaskDetail from "./pages/TaskDetail"
 
 // Páginas que ya traía el repo
 import Single from "./pages/Single";
@@ -47,6 +48,8 @@ export const router = createBrowserRouter([
       { path: "/u/:username", element: <ProfilePublic /> }, // <- perfil público
       { path: "/browse", element: <Browse /> },
       { path: "/post", element: <PostTask /> },
+      { path: "/task/:taskId", element: <TaskDetail /> },
+
 
       // Páginas del template
       { path: "/single/:theId", element: <Single /> },
