@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
-from api.models import db, User, Task, Profile
+from api.models import db, User, Task, Profile, Dispute, Rol
 
 api = Blueprint("api", __name__)
 CORS(api, supports_credentials=True)
@@ -174,3 +174,75 @@ def delete_task(task_id):
     db.session.delete(t)
     db.session.commit()
     return jsonify({"message": "Tarea eliminada"}), 200
+
+# =========================
+# ADMIN ACTIONS AND DISPUTES
+# =========================
+
+
+@api.route("/disputes", methods=["GET"])
+def get_disputes():
+    disputes = Dispute.query.all()
+    return jsonify([d.serialize() for d in disputes]), 200
+
+
+@api.route("/disputes", methods=["POST"])
+def create_dispute():
+    data = request.get_json() or {}
+    d = Dispute(
+        reason=data["reason"],
+        details=data["details"],
+        status=data["status"],
+        resolution=data["resolution"],
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        dealed_id=data["task_id"],
+        raised_by=data["client_id"]
+    )
+    db.session.add(d)
+    db.session.commit()  
+    return jsonify(d.serialize()), 201
+
+@api.route("/disputes/<int:dispute_id>", methods=["PUT"])
+def update_dispute(dispute_id):
+    data = request.get_json() or {}
+    d = Dispute(
+        id = Dispute.query.get(dispute_id),
+        reason=data["reason"],
+        details=data["details"],
+        status=data["status"],
+        resolution=data["resolution"],
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        dealed_id=data["task_id"],
+        raised_by=data["client_id"]
+    )
+    return jsonify(d.serialize()), 201
+
+# =========================
+# ROL
+# =========================
+
+@api.route("/rol", methods=["POST"])
+def create_rol():
+    data = request.get_json() or {}
+    r = Rol(
+        type=data["type"],
+    )
+    db.session.add(r)
+    db.session.commit()  
+    return jsonify(r.serialize()), 201
+
+@api.route("/rol", methods=["GET"])
+def get_roles():
+    roles = Rol.query.all()
+    return jsonify([r.serialize() for r in roles]), 200
+
+@api.route("/rol/<int:rol_id>", methods=["DELETE"])
+def delete_rol(rol_id):
+    r = Task.query.get(rol_id)
+    if not r:
+        return jsonify({"error": "Rol no encontrado"}), 404
+    db.session.delete(r)
+    db.session.commit()
+    return jsonify({"message": "Rol eliminado"}), 200

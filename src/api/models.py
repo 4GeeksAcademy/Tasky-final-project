@@ -24,7 +24,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False,
-                           server_default=func.current_timestamp())
+    server_default=func.current_timestamp())
     modified_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp(
     ), server_onupdate=func.current_timestamp())
     roles = db.relationship('Rol', secondary='user_rol',)
