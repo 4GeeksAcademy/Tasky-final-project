@@ -1,18 +1,30 @@
 // src/front/components/SendOfferModal.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Button, Form, Alert, InputGroup } from "react-bootstrap";
 import { useStore } from "../hooks/useGlobalReducer";
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL;
 
-export default function SendOfferModal({ show, onHide, taskId, onCreated }) {
+export default function SendOfferModal({ show, onHide, taskId, onCreated, existingOffer }) {
     const { store } = useStore();
-    const user = store?.user; // usuario “logueado” (mock o real)
+    const user = store?.user; // { id, role }
 
     const [amount, setAmount] = useState("");
     const [message, setMessage] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+
+    // Prefill si estamos en modo actualización
+    useEffect(() => {
+        if (existingOffer) {
+            setAmount(String(existingOffer.amount));
+            setMessage(existingOffer.message || "");
+        } else {
+            setAmount("");
+            setMessage("");
+        }
+        setError("");
+    }, [existingOffer, show]);
 
     const reset = () => {
         setAmount("");
@@ -26,57 +38,60 @@ export default function SendOfferModal({ show, onHide, taskId, onCreated }) {
         setError("");
 
         try {
-            if (!user?.id) {
-                throw new Error("No hay usuario (tasker) en sesión");
-            }
+            if (!user?.id) throw new Error("No hay usuario (tasker) en sesión");
 
-            // Soporta coma decimal y valida monto > 0
             const nAmount = Number(String(amount).replace(",", "."));
             if (!Number.isFinite(nAmount) || nAmount <= 0) {
                 throw new Error("Monto inválido");
             }
+            const msg = message.trim();
+            if (!msg) throw new Error("El mensaje es obligatorio");
+
+            // Si existe oferta previa: obliga a cambiar algo (monto o mensaje)
+            if (existingOffer) {
+                const sameAmount = Number(existingOffer.amount) === nAmount;
+                const sameMessage = (existingOffer.message || "").trim() === msg;
+                if (sameAmount && sameMessage) {
+                    throw new Error("Ya ofertaste ese mismo monto y mensaje. Cambia el monto o el mensaje.");
+                }
+            }
 
             const base = (API_BASE || "").replace(/\/+$/, "");
-            const url = `${base}/api/tasks/${taskId}/offers`;
+            const isUpdate = !!existingOffer;
+            const url = isUpdate
+                ? `${base}/api/tasks/${taskId}/offers/${existingOffer.id}`
+                : `${base}/api/tasks/${taskId}/offers`;
 
-            // (Logs útiles mientras desarrollas; puedes quitarlos al final)
-            console.log("POST →", url, {
-                tasker_id: user.id,
+            const method = isUpdate ? "PUT" : "POST";
+            const body = {
+                tasker_id: user.id,     // si tu backend ya infiere el tasker por sesión, puedes omitirlo
                 amount: nAmount,
-                message: message.trim(),
-            });
+                message: msg,
+            };
 
             const res = await fetch(url, {
-                method: "POST",
+                method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    tasker_id: user.id,
-                    amount: nAmount,
-                    message: message.trim(),
-                }),
+                body: JSON.stringify(body),
             });
 
             const ct = res.headers.get("content-type") || "";
             const raw = await res.text();
-            // (Log para depurar respuestas no-JSON)
-            console.log("Status:", res.status, "CT:", ct, "Raw:", raw);
-
             const payload = ct.includes("application/json") ? JSON.parse(raw) : raw;
 
             if (!res.ok) {
-                const msg =
+                const msgErr =
                     typeof payload === "string"
                         ? `HTTP ${res.status}: ${payload.slice(0, 200)}`
                         : payload?.message || payload?.detail || `HTTP ${res.status}`;
-                throw new Error(msg);
+                throw new Error(msgErr);
             }
 
             onCreated?.(payload);
             reset();
             onHide?.();
         } catch (err) {
-            console.error("POST failed:", err);
-            setError(err.message || "No se pudo enviar la oferta");
+            setError(err.message || "No se pudo enviar/actualizar la oferta");
         } finally {
             setSubmitting(false);
         }
@@ -93,20 +108,15 @@ export default function SendOfferModal({ show, onHide, taskId, onCreated }) {
         <Modal show={show} onHide={onHide} centered>
             <Form onSubmit={handleSubmit}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Enviar oferta</Modal.Title>
+                    <Modal.Title>{existingOffer ? "Actualizar oferta" : "Enviar oferta"}</Modal.Title>
                 </Modal.Header>
 
                 <Modal.Body>
-                    {error && (
-                        <Alert variant="danger" className="mb-3">
-                            {error}
-                        </Alert>
-                    )}
+                    {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
                     {!user?.id && (
                         <Alert variant="warning" className="mb-3">
-                            No hay usuario en sesión. Haz un{" "}
-                            <code>LOGIN</code> demo en tu store para probar.
+                            No hay usuario en sesión. Haz un <code>LOGIN</code> demo en tu store para probar.
                         </Alert>
                     )}
 
@@ -152,7 +162,7 @@ export default function SendOfferModal({ show, onHide, taskId, onCreated }) {
                         Cancelar
                     </Button>
                     <Button type="submit" variant="primary" disabled={!canSubmit}>
-                        {submitting ? "Enviando..." : "Enviar oferta"}
+                        {submitting ? (existingOffer ? "Actualizando..." : "Enviando...") : (existingOffer ? "Actualizar" : "Enviar")}
                     </Button>
                 </Modal.Footer>
             </Form>

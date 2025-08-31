@@ -1,16 +1,35 @@
+# src/api/routes.py
+import os
+from decimal import Decimal
+from datetime import datetime, date
+
+from flask import Blueprint, jsonify, request
+from flask_cors import CORS
+
 from api.models import (
     db, User, Task, Profile,
     TaskOffered, TaskDealed, Review, Message
 )
-from datetime import datetime, date  # ya que usamos date.today() más abajo
-from flask import Blueprint, jsonify, request
-from flask_cors import CORS
-from datetime import datetime
-from api.models import db, User, Task, Profile
 from api.statuses import TaskStatus, OfferStatus, DealStatus, statuses_as_dict
 
+# =========================
+# Blueprint + CORS (solo en API)
+# =========================
 api = Blueprint("api", __name__)
-CORS(api, supports_credentials=True)
+
+FRONT = os.getenv(
+    "FRONTEND_ORIGIN",
+    # default para Codespaces (puerto 3000 del front)
+    "https://urban-space-cod-gj7pgr6p66rhv959-3000.app.github.dev"
+)
+
+# Habilita CORS para todas las rutas de este blueprint
+CORS(
+    api,
+    resources={r"/*": {"origins": [FRONT]}},
+    supports_credentials=False,      # no estás usando cookies
+    expose_headers=["Content-Type"]
+)
 
 # =========================
 # HEALTH
@@ -157,7 +176,8 @@ def create_task():
         publisher_id=data["publisher_id"],
         location=data.get("location"),
         price=data.get("price"),
-        status=data.get("status", TaskStatus.OPEN.value),
+        status=data.get("status", TaskStatus.OPEN.value if hasattr(
+            TaskStatus, "OPEN") else "open"),
     )
     db.session.add(t)
     db.session.commit()
@@ -181,7 +201,6 @@ def delete_task(task_id):
     db.session.commit()
     return jsonify({"message": "Tarea eliminada"}), 200
 
-
 # =========================
 # OFFERS (en Task)
 # =========================
@@ -195,7 +214,6 @@ def create_offer(task_id):
 
     data = request.get_json() or {}
     tasker_id = data.get("tasker_id")
-    # usamos status como amount (prueba)
     amount = data.get("amount")
     message = (data.get("message") or "").strip()
 
@@ -207,10 +225,14 @@ def create_offer(task_id):
         task_id=task_id, tasker_id=tasker_id).first()
     if not offer:
         offer = TaskOffered(task_id=task_id, tasker_id=tasker_id)
+        # si deseas forzar estado inicial:
+        try:
+            offer.status = OfferStatus.PENDING.value  # si tienes Enum
+        except Exception:
+            offer.status = "pending"
         db.session.add(offer)
 
-    # En tu modelo actual 'status' es Numeric: lo usamos como amount (solo para pruebas)
-    offer.status = amount
+    offer.amount = Decimal(str(amount))
     offer.message = message
 
     try:
@@ -219,30 +241,47 @@ def create_offer(task_id):
         db.session.rollback()
         return jsonify({"error": "No se pudo guardar la oferta"}), 500
 
-    out = offer.serialize()
-    out["amount"] = float(offer.status) if offer.status is not None else None
-    return jsonify(out), 201
+    return jsonify(offer.serialize()), 201
 
 
 @api.route("/tasks/<int:task_id>/offers", methods=["GET"])
-def get_offers(task_id):
+def list_offers(task_id):
+    tasker_id = request.args.get("tasker_id", type=int)
+    q = TaskOffered.query.filter_by(task_id=task_id)
+    if tasker_id:
+        q = q.filter_by(tasker_id=tasker_id)
+    rows = q.all()
+    if tasker_id and not rows:
+        return jsonify({"message": "no offer for this tasker"}), 404
+    return jsonify([r.serialize() for r in rows]), 200
+
+
+@api.route("/tasks/<int:task_id>/offers/<int:offer_id>", methods=["PUT"])
+def update_offer(task_id, offer_id):
+    data = request.get_json() or {}
+    row = TaskOffered.query.filter_by(id=offer_id, task_id=task_id).first()
+    if not row:
+        return jsonify({"message": "offer not found"}), 404
+
     task = Task.query.get(task_id)
-    if not task:
-        return jsonify({"error": "Tarea no encontrada"}), 404
+    if not task or task.status != "open":
+        return jsonify({"message": "task is not open"}), 400
 
-    offers = TaskOffered.query.filter_by(task_id=task_id).all()
-    result = []
-    for offer in offers:
-        item = offer.serialize()
-        item["amount"] = float(
-            offer.status) if offer.status is not None else None
-        result.append(item)
-    return jsonify(result), 200
+    amt = data.get("amount", None)
+    msg = (data.get("message") or "").strip()
 
+    if amt is not None:
+        row.amount = Decimal(str(amt))
+    row.message = msg
+
+    db.session.commit()
+    return jsonify(row.serialize()), 200
 
 # =========================
 # REVIEWS (cliente → tasker)
 # =========================
+
+
 @api.route("/tasks/<int:task_id>/reviews", methods=["POST"])
 def create_review(task_id):
     task = Task.query.get(task_id)
@@ -296,13 +335,13 @@ def get_reviews(task_id):
     reviews = Review.query.filter_by(task_id=task_id).all()
     return jsonify([r.serialize() for r in reviews]), 200
 
-
 # =========================
 # CHAT (mensajes por último deal)
 # =========================
+
+
 def _latest_deal(task_id):
-    return TaskDealed.query.filter_by(task_id=task_id) \
-        .order_by(TaskDealed.id.desc()).first()
+    return TaskDealed.query.filter_by(task_id=task_id).order_by(TaskDealed.id.desc()).first()
 
 
 @api.route("/tasks/<int:task_id>/messages", methods=["GET"])
@@ -324,7 +363,7 @@ def list_messages(task_id):
 def create_message(task_id):
     data = request.get_json() or {}
     body = (data.get("body") or "").strip()
-    sender_id = data.get("sender_id")
+    sender_id = data.get("sender_id")  # ⚠ tu front debe enviarlo
 
     if not body or not sender_id:
         return jsonify({"error": "body y sender_id son obligatorios"}), 400
@@ -356,10 +395,11 @@ def create_message(task_id):
 
     return jsonify(msg.serialize()), 201
 
-
 # =========================
 # DEALS
 # =========================
+
+
 @api.route("/tasks/<int:task_id>/deals", methods=["POST"])
 def create_deal(task_id):
     task = Task.query.get(task_id)
@@ -413,48 +453,11 @@ def create_deal(task_id):
 
 @api.route("/tasks/<int:task_id>/deal", methods=["GET"])
 def get_latest_deal_for_task(task_id):
-    deal = TaskDealed.query.filter_by(task_id=task_id) \
-        .order_by(TaskDealed.id.desc()).first()
+    deal = TaskDealed.query.filter_by(
+        task_id=task_id).order_by(TaskDealed.id.desc()).first()
     if not deal:
         return jsonify({"error": "No hay deals para esta tarea"}), 404
     return jsonify(deal.serialize()), 200
-
-
-@api.route("/offers/<int:offer_id>/accept", methods=["POST"])
-def accept_offer(offer_id):
-    offer = TaskOffered.query.get(offer_id)
-    if not offer:
-        return jsonify({"error": "Oferta no encontrada"}), 404
-
-    task = Task.query.get(offer.task_id)
-    if not task:
-        return jsonify({"error": "Tarea no encontrada"}), 404
-
-    client_id = getattr(task, "client_id", None) or task.publisher_id
-    if not client_id:
-        return jsonify({"error": "La tarea no tiene cliente/publisher definido"}), 400
-
-    deal = TaskDealed(
-        task_id=task.id,
-        offer_id=offer.id,
-        client_id=client_id,
-        tasker_id=getattr(offer, "tasker_id", None),
-        fixed_price=getattr(offer, "amount", None),
-        status="accepted",
-        accepted_at=date.today(),
-    )
-
-    task.assigned_tasker_id = getattr(offer, "tasker_id", None)
-    task.status = "assigned"
-
-    db.session.add(deal)
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        return jsonify({"error": "No se pudo crear el deal"}), 500
-
-    return jsonify(deal.serialize()), 201
 
 
 @api.get("/meta/statuses")
