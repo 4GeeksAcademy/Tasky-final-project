@@ -13,6 +13,7 @@ import ProfilePublic from "./pages/ProfilePublic";
 import AuthCallback from "./pages/AuthCallback";
 import Browse from "./pages/Browse";
 import PostTask from "./pages/PostTask";
+import MyOffers from "./components/MyOffers";
 
 // Páginas que ya traía el repo
 import Single from "./pages/Single";
@@ -53,6 +54,7 @@ export const router = createBrowserRouter([
       { path: "/demo", element: <Demo /> },
       { path: "/newtask", element: <NewTask /> },
       { path: "/admin", element: <Admin /> },
+      { path: "/myoffers", element: <MyOffers /> },
 
       // Privadas (requiere sesión)
       {

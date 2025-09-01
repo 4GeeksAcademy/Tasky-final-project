@@ -40,7 +40,7 @@ export function Navbar() {
 					<Link to="/post" className="btn btn-primary" aria-label="Post a task">
 						Post a task
 					</Link>
-					<Link to="/browse" className="link">
+					<Link to="/myoffers" className="link">
 						Browse tasks
 					</Link>
 					<Link to="/my" className="link">
