@@ -1,0 +1,125 @@
+/* ===== Login ===== */
+.login{
+  --bg: linear-gradient(135deg,#0b1220 0%, #0b1329 100%);
+  --card-bg: #fff;
+  --border: #e2e8f0;
+  --shadow: 0 18px 50px rgba(2,6,23,.12);
+  padding: clamp(24px, 4vw, 48px) 16px 56px;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(16px, 4vw, 40px);
+  align-items: center;
+}
+
+/* — Hero / marca — */
+.login__hero{
+  position: relative;
+}
+.login__brand{
+  display:flex; align-items:baseline; gap:8px; margin-bottom:10px;
+  font-weight:900; font-size:clamp(34px, 4.2vw, 46px);
+  letter-spacing:-.02em; color:#0f172a;
+}
+.login__mark{
+  width:30px; height:30px; border-radius:8px; display:inline-block; margin-right:4px;
+  background: linear-gradient(135deg,#2563eb 0%, #6366f1 50%, #a78bfa 100%);
+  box-shadow:0 8px 18px rgba(37,99,235,.25);
+}
+.login__mark::after{
+  content:""; position:absolute; width:30px; height:30px; transform:translate(2px,1px);
+  background:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path d='M5 13.5 L9.5 18 L19 7' fill='none' stroke='%23ffffff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/>\
+</svg>") center/70% 70% no-repeat;
+}
+.login__brandText{ }
+.login__brandAccent{
+  background: linear-gradient(92deg,#3b82f6 0%, #5b21b6 50%, #a78bfa 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  -webkit-text-stroke:.35px rgba(15,23,42,.18);
+}
+
+.login__title{
+  margin: 8px 0 6px;
+  font-size: clamp(26px, 3.2vw, 36px);
+  color:#0f172a;
+}
+.login__subtitle{ color:#475569; margin-bottom:12px; }
+.login__bullets{ color:#64748b; line-height:1.6; }
+
+/* — Card — */
+.login__card{
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 3vw, 28px);
+}
+.login__cardTitle{
+  margin: 0 0 12px; font-size: 22px; font-weight: 800; color:#0f172a;
+}
+.login__alert{
+  background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
+  padding:10px 12px; border-radius:10px; margin-bottom:10px; font-size:14px;
+}
+
+/* inputs */
+.field{ display:grid; gap:6px; margin:10px 0; }
+.field label{ font-size:14px; color:#0f172a; font-weight:600; }
+.input{
+  display:flex; align-items:center; gap:6px;
+  border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+  background:#fff;
+}
+.input input{
+  border:0; outline:0; flex:1; font-size:15px; background:transparent; color:#0f172a;
+}
+.input:focus-within{
+  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+.input--withBtn{ padding-right:4px; }
+.input__addon{
+  border:0; background:transparent; cursor:pointer; border-radius:8px; padding:6px;
+}
+
+/* acciones */
+.login__actions{
+  display:flex; gap:10px; margin-top:12px; align-items:center;
+}
+.btn{ border-radius:16px; padding:10px 14px; font-weight:700; border:1px solid transparent; }
+.btn-ghost{
+  background:#f8fafc; color:#0f172a; border:1px solid var(--border);
+}
+.btn-ghost:hover{ background:#f1f5f9; }
+
+/* proveedores */
+.login__divider{
+  display:flex; align-items:center; gap:8px; margin:16px 0 8px; color:#64748b; font-size:14px;
+}
+.login__divider::before,
+.login__divider::after{
+  content:""; flex:1; height:1px; background:#e6e9f0;
+}
+.login__providers{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.btn-social{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  border-radius:12px; border:1px solid var(--border); background:#fff; padding:10px 12px;
+  box-shadow:0 8px 18px rgba(2,6,23,.04);
+}
+.btn-social:hover{ background:#f8fafc; }
+.btn-google { }
+.btn-facebook { }
+
+.login__hint{ margin-top:10px; color:#64748b; font-size:14px; }
+.link-inline{ color:#2563eb; text-decoration:none; }
+.link-inline:hover{ text-decoration:underline; }
+
+/* responsive */
+@media (max-width: 920px){
+  .login{ grid-template-columns: 1fr; padding-top: 18px; }
+  .login__hero{ order: 2; text-align:center; }
+  .login__card{ order: 1; }
+  .login__brand{ justify-content:center; }
+}

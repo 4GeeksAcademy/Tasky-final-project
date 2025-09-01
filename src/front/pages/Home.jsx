@@ -51,7 +51,7 @@ export default function Home() {
 					</p>
 					<div className="hero__cta">
 						<Link to="/post" className="btn btn--primary">Post a task</Link>
-						<Link to="/browse" className="btn btn--ghost">Browse tasks</Link>
+						<Link to="/browse" className="btn btn--primary">Browse tasks</Link>
 					</div>
 
 					{/* mini-stats (mock seguros) */}

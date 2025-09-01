@@ -1,0 +1,110 @@
+/* ===== Auth (Register / Login reusables) ===== */
+.auth{
+  padding: clamp(24px, 4vw, 48px) 16px 56px;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(16px, 4vw, 40px);
+  align-items: center;
+}
+
+/* Usamos el mismo brand del navbar, solo escalado */
+.auth .brand{
+  font-size: clamp(40px, 6vw, 56px);
+  line-height: 1.05;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.auth__title{
+  margin: 8px 0 6px;
+  font-size: clamp(26px, 3.2vw, 36px);
+  color:#0f172a;
+}
+.auth__subtitle{ color:#475569; margin-bottom:12px; }
+.auth__bullets{ list-style: disc; padding-left: 1.25rem; color:#64748b; }
+.auth__bullets li{ margin: 6px 0; }
+
+/* Card */
+.auth__card{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 18px 50px rgba(2,6,23,.12);
+  padding: clamp(18px, 3vw, 28px);
+}
+.auth__cardTitle{
+  margin:0 0 12px; font-size: 22px; font-weight: 800; color:#0f172a;
+}
+.auth__alert{
+  background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;
+  padding:10px 12px; border-radius:10px; margin-bottom:10px; font-size:14px;
+}
+
+/* Campos */
+.field{ display:grid; gap:6px; margin:10px 0; }
+.auth-label{ font-size:14px; color:#0f172a; font-weight:600; }
+.input{
+  border:1px solid #e2e8f0; border-radius:12px; padding:10px 12px;
+  background:#fff; font-size:15px; color:#0f172a;
+}
+.input.has-error, .input--withBtn.has-error{
+  border-color:#f87171; box-shadow:0 0 0 3px rgba(248,113,113,.15);
+}
+.input:focus{ outline:none; }
+.input:focus-visible{
+  border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.12);
+}
+.input--withBtn{
+  display:flex; align-items:center; gap:6px; padding-right:4px;
+}
+.input--withBtn input{ border:0; outline:0; flex:1; background:transparent; }
+.input__addon{
+  border:0; background:transparent; cursor:pointer; border-radius:8px; padding:6px;
+}
+.auth-error{ color:#b91c1c; font-size:12px; }
+
+/* Captcha mock */
+.captcha{
+  margin:12px 0; display:flex; align-items:center; gap:10px; color:#475569;
+}
+.captcha__check{
+  width:20px; height:20px; border:1px solid #cbd5e1; border-radius:4px;
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.025);
+  background: #fff;
+}
+
+/* Acciones */
+.auth__actions{
+  display:flex; align-items:center; gap:12px; margin-top:12px;
+}
+.auth__muted{ color:#64748b; font-size:14px; }
+.link-inline{ color:#2563eb; text-decoration:none; }
+.link-inline:hover{ text-decoration:underline; }
+
+/* Proveedores */
+.auth__divider{
+  display:flex; align-items:center; gap:8px; margin:16px 0 8px; color:#64748b; font-size:14px;
+}
+.auth__divider::before,
+.auth__divider::after{
+  content:""; flex:1; height:1px; background:#e6e9f0;
+}
+.auth__providers{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.btn-social{
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  border-radius:12px; border:1px solid #e2e8f0; background:#fff; padding:10px 12px;
+  box-shadow:0 8px 18px rgba(2,6,23,.04);
+}
+.btn-social:hover{ background:#f8fafc; }
+
+/* Responsive */
+@media (max-width: 920px){
+  .auth{ grid-template-columns: 1fr; padding-top: 18px; }
+  .auth__hero{ order: 2; text-align:center; }
+  .auth__card{ order: 1; }
+  .auth .brand{ justify-content:center; }
+}

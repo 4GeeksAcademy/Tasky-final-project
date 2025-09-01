@@ -13,9 +13,11 @@ import ProfilePublic from "./pages/ProfilePublic";
 import AuthCallback from "./pages/AuthCallback";
 import Browse from "./pages/Browse";
 import PostTask from "./pages/PostTask";
-import MyOffers from "./components/MyOffers";
+import TaskDetail from "./pages/TaskDetail";
+import Help from "./pages/Help";              // ✅ Ayuda con subrutas
+import MyOffers from "./components/MyOffers"; // ✅ Ofertas del usuario
 
-// Páginas que ya traía el repo
+// Páginas del template
 import Single from "./pages/Single";
 import Demo from "./pages/Demo";
 import NewTask from "./pages/NewTask";
@@ -45,16 +47,20 @@ export const router = createBrowserRouter([
       { path: "/login", element: <Login /> },
       { path: "/register", element: <Register /> },
       { path: "/auth/callback", element: <AuthCallback /> },
-      { path: "/u/:username", element: <ProfilePublic /> }, // <- perfil público
+      { path: "/u/:username", element: <ProfilePublic /> },
       { path: "/browse", element: <Browse /> },
       { path: "/post", element: <PostTask /> },
+      { path: "/task/:taskId", element: <TaskDetail /> },
+      { path: "/help/*", element: <Help /> },             
 
-      // Páginas del template
+      // Páginas del template (opcionales)
       { path: "/single/:theId", element: <Single /> },
       { path: "/demo", element: <Demo /> },
       { path: "/newtask", element: <NewTask /> },
       { path: "/admin", element: <Admin /> },
-      { path: "/myoffers", element: <MyOffers /> },
+
+      // Extras públicas
+      { path: "/myoffers", element: <MyOffers /> },       // ✅ tus ofertas
 
       // Privadas (requiere sesión)
       {

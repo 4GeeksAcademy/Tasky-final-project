@@ -17,6 +17,7 @@ export default function NewTask() {
         assigned_at: "",
         completed_at: "",
         categories: [], // guardamos array
+        publisher_id: 1
     });
 
     const [catList, setCatList] = useState([
@@ -67,6 +68,7 @@ export default function NewTask() {
                 assigned_at: "",
                 completed_at: "",
                 categories: [],
+                "publisher_id": 1
             });
             setCatList((arr) => arr.map((c) => ({ ...c, checked: false })));
             // TODO: feedback/toast o redirección
