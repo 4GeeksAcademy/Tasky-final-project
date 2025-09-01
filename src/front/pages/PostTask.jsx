@@ -31,22 +31,23 @@ export default function PostTask() {
 
     return (
         <div className="container" style={{ maxWidth: 700, margin: "2rem auto" }}>
-            <h2>Post a task</h2>
-            <form onSubmit={submit} className="card" style={{ padding: 16, display: "grid", gap: 10 }}>
-                <label>Título</label>
-                <input value={form.title} onChange={set("title")} placeholder="Ej. Armar repisa" required />
+            <h2>Genera una disputa</h2>
+            <h6 className="text-muted"> task #43</h6>
+            <form onSubmit={submit} className="card text-white" style={{ padding: 16, display: "grid", gap: 10 }}>
+                <label>Motivo</label>
+                <input value={form.title} onChange={set("title")} placeholder="Ej. El tasker no se presentó" required />
 
-                <label>Descripción</label>
+                <label>Detalles </label>
                 <textarea rows={4} value={form.description} onChange={set("description")}
-                    placeholder="Detalles de lo que necesitas" required />
+                    placeholder="Detalles del problema ocurrido" required />
 
-                <label>Ubicación (opcional)</label>
-                <input value={form.location} onChange={set("location")} placeholder="Ciudad" />
-
-                <label>Precio (opcional)</label>
-                <input type="number" min="0" value={form.price} onChange={set("price")} placeholder="Ej. 300" />
-
-                <button type="submit">Publicar</button>
+                <div className="my-3">
+                    <label className="form-check-label my-2" htmlFor="fotos">
+                        Sube algunas fotos si tienes evidencia que ayude a entender el problema
+                    </label>
+                    <input type="file" className="form-control" id="fotos" multiple />
+                </div>
+                <button type="submit" className="btn">Abrir disputa</button>
                 {msg && <div style={{ marginTop: 8 }}>{msg}</div>}
             </form>
         </div>
