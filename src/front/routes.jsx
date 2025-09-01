@@ -1,4 +1,3 @@
-// src/front/routes.jsx
 import React from "react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 import { useStore } from "./hooks/useGlobalReducer";
