@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
-from api.models import db, User, Task, Profile, Dispute, Rol
+from api.models import db, User, Task, Profile, Dispute, Rol, UserRole, Admin_action
 
 api = Blueprint("api", __name__)
 CORS(api, supports_credentials=True)
@@ -219,8 +219,28 @@ def update_dispute(dispute_id):
     )
     return jsonify(d.serialize()), 201
 
+@api.route("/admin_actions", methods=["GET"])
+def get_actions():
+    actions = Admin_action.query.all()
+    return jsonify([a.serialize() for a in actions]), 200
+
+@api.route("/admin_actions", methods=["POST"])
+def create_actions():
+    data = request.get_json() or {}
+    a = Admin_action(
+        action=data["action"],
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        dispute_id=data["dispute_id"],
+        admin_user=data["user_id"]
+    )
+    db.session.add(a)
+    db.session.commit()  
+    return jsonify(a.serialize()), 201
+
+
 # =========================
-# ROL
+# ROL y USER ROL
 # =========================
 
 @api.route("/rol", methods=["POST"])
@@ -246,3 +266,47 @@ def delete_rol(rol_id):
     db.session.delete(r)
     db.session.commit()
     return jsonify({"message": "Rol eliminado"}), 200
+
+@api.route("/user-roles", methods=["POST"])
+def create_user_role():
+    data = request.get_json() or {}
+    if not data.get("user_id") or not data.get("role_id"):
+        return jsonify({"error": "user_id y role_id son requeridos"}), 400
+        
+    user = User.query.get(data["user_id"])
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+        
+    rol = Rol.query.get(data["role_id"])
+    if not rol:
+        return jsonify({"error": "Rol no encontrado"}), 404
+
+    new_user_role = db.session.execute(
+        UserRole.insert().values(
+            user_id=data["user_id"],
+            role_id=data["role_id"]
+            )
+        )
+        
+    db.session.commit()
+        
+    return jsonify({
+            "user_id": data["user_id"],
+            "role_id": data["role_id"],
+            "message": "Relación creada exitosamente"
+        }), 201
+    
+@api.route("/users/<int:user_id>/roles", methods=["GET"])
+def get_user_roles_by_user(user_id):
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        roles = db.session.query(UserRole).filter_by(user_id=user_id).all()
+        return jsonify([{
+            "user_id": ur.user_id,
+            "role_id": ur.role_id
+        } for ur in roles]), 200
+
+
