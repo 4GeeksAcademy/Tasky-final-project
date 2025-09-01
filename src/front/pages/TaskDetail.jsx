@@ -312,8 +312,17 @@ export default function TaskDetail() {
               >
                 {completing ? "Marcando..." : "Marcar como completada"}
               </Button>
-            )}
 
+            )}
+            {/* Generar disputa (solo client/publisher) */}
+            {isPublisher && ["assigned", "in_progress"].includes(task?.status) && (
+              <Button
+                variant="danger"
+                className="mb-2"
+              >
+                Generar disputa
+              </Button>
+            )}
             {/* Calificar */}
             {task?.status === "completed" && currentUser?.role === "client" && isPublisher && !!task?.assigned_tasker_id && (
               <div>
