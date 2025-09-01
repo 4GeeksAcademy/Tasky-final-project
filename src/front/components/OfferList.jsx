@@ -1,87 +1,151 @@
-// src/front/components/OffersList.jsx
-import React, { useEffect, useState } from "react";
-import { ListGroup, Button, Spinner, Alert, Badge } from "react-bootstrap";
+// src/front/components/OfferList.jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Badge, Button, Card, ListGroup, Spinner } from "react-bootstrap";
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL;
 
-// Muestra las ofertas de una tarea.
-// Props:
-// - taskId: id de la tarea (obligatorio)
-// - isPublisher: boolean -> si el usuario actual es el dueño de la tarea (cliente)
-// - refreshSignal: cualquier valor que cambie cuando se crea/acepta/rechaza una oferta (para refetch)
-export default function OffersList({ taskId, isPublisher = false, refreshSignal }) {
+export default function OfferList({
+    taskId,
+    canAccept = false,                // true si el viewer es el publisher
+    onAccepted = () => { },            // callback(deal) tras aceptar oferta
+}) {
+    const base = useMemo(() => (API_BASE || "").replace(/\/+$/, ""), []);
     const [offers, setOffers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [err, setErr] = useState("");
+    const [acceptingId, setAcceptingId] = useState(null);
+    const [flash, setFlash] = useState("");
 
-    const base = (API_BASE || "").replace(/\/+$/, "");
-    const url = `${base}/api/tasks/${taskId}/offers`;
+    // cache simple de usernames por id
+    const [usernames, setUsernames] = useState({});
 
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
+        let alive = true;
+        const run = async () => {
+            setLoading(true);
+            setErr("");
             try {
-                setLoading(true);
-                setError("");
-                const res = await fetch(url);
-                const ct = res.headers.get("content-type") || "";
-                if (!ct.includes("application/json")) {
-                    const txt = await res.text();
-                    throw new Error(`Contenido no-JSON (status ${res.status}). Preview: ${txt.slice(0, 100)}...`);
-                }
-                const data = await res.json();
-                if (!res.ok) throw new Error(data?.message || data?.detail || `HTTP ${res.status}`);
-                if (!cancelled) setOffers(Array.isArray(data) ? data : []);
+                const r = await fetch(`${base}/api/tasks/${taskId}/offers`);
+                const ct = r.headers.get("content-type") || "";
+                const raw = await r.text();
+                const data = ct.includes("application/json") ? JSON.parse(raw) : raw;
+                if (!r.ok) throw new Error(typeof data === "string" ? raw : (data?.message || `HTTP ${r.status}`));
+                if (!alive) return;
+                setOffers(Array.isArray(data) ? data : []);
             } catch (e) {
-                if (!cancelled) setError(e.message || "No se pudo cargar las ofertas");
+                if (!alive) return;
+                setErr(e.message || "No se pudieron cargar las ofertas");
             } finally {
-                if (!cancelled) setLoading(false);
+                if (alive) setLoading(false);
             }
-        })();
-        return () => { cancelled = true; };
-    }, [url, refreshSignal]);
+        };
+        run();
+        return () => { alive = false; };
+    }, [base, taskId]);
 
-    const fmtMoney = (n) =>
-        new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD" }).format(Number(n || 0));
+    // obtener usernames (opcional; si falla, mostramos el id)
+    useEffect(() => {
+        const ids = [...new Set(offers.map(o => o.tasker_id).filter(Boolean))].filter(
+            (id) => usernames[id] == null
+        );
+        if (ids.length === 0) return;
 
-    const fmtDate = (iso) => {
-        if (!iso) return "";
-        const d = new Date(iso);
-        return Number.isNaN(d.getTime()) ? "" : d.toLocaleString();
+        ids.forEach(async (id) => {
+            try {
+                const r = await fetch(`${base}/api/users/${id}`);
+                if (!r.ok) return;
+                const u = await r.json();
+                setUsernames((prev) => ({ ...prev, [id]: u?.username || String(id) }));
+            } catch {
+                setUsernames((prev) => ({ ...prev, [id]: String(id) }));
+            }
+        });
+    }, [base, offers, usernames]);
+
+    const acceptOffer = async (offer) => {
+        if (!canAccept) return;
+        setAcceptingId(offer.id);
+        setErr("");
+        setFlash("");
+        try {
+            const body = {
+                tasker_id: offer.tasker_id,
+                offer_id: offer.id,
+                // optional: fixed_price: offer.amount,
+            };
+            const r = await fetch(`${base}/api/tasks/${taskId}/deals`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            const ct = r.headers.get("content-type") || "";
+            const raw = await r.text();
+            const data = ct.includes("application/json") ? JSON.parse(raw) : raw;
+            if (!r.ok) throw new Error(typeof data === "string" ? raw : (data?.error || `HTTP ${r.status}`));
+
+            setFlash("¡Oferta aceptada! La tarea pasó a assigned.");
+            onAccepted(data); // ← notifica al padre (TaskDetail) con el deal
+        } catch (e) {
+            setErr(e.message || "No se pudo aceptar la oferta");
+        } finally {
+            setAcceptingId(null);
+        }
     };
 
-    if (loading) return <div className="mt-2"><Spinner animation="border" size="sm" /> Cargando ofertas…</div>;
-    if (error) return <Alert variant="danger" className="mt-2">{error}</Alert>;
-
-    if (offers.length === 0) {
-        return <p className="text-muted mt-2">No hay ofertas todavía.</p>;
-    }
+    if (loading) return <Spinner animation="border" />;
+    if (err) return <Alert variant="danger" className="mt-2">{err}</Alert>;
 
     return (
-        <ListGroup className="mt-2">
-            {offers.map(o => (
-                <ListGroup.Item key={o.id} className="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div><strong>{fmtMoney(o.amount)}</strong> — {o.message || <em>(sin mensaje)</em>}</div>
-                        <div className="text-muted small">
-                            Offer #{o.id} · tasker_id: {o.tasker_id} · {fmtDate(o.created_at)}
-                            {o.status && <Badge bg={o.status === "accepted" ? "success" : o.status === "rejected" ? "secondary" : "info"} className="ms-2">{o.status}</Badge>}
-                        </div>
-                    </div>
+        <Card>
+            <Card.Header>Ofertas recibidas</Card.Header>
+            <Card.Body className="pt-0">
+                {flash && (
+                    <Alert
+                        variant="success"
+                        dismissible
+                        onClose={() => setFlash("")}
+                        className="mt-3"
+                    >
+                        {flash}
+                    </Alert>
+                )}
 
-                    {/* Acciones SOLO para el cliente dueño de la tarea (publisher) - deja los botones por ahora como placeholder */}
-                    {isPublisher && (
-                        <div className="d-flex gap-2">
-                            <Button size="sm" variant="success" disabled title="TODO: wire backend accept">
-                                Aceptar
-                            </Button>
-                            <Button size="sm" variant="outline-secondary" disabled title="TODO: wire backend reject">
-                                Rechazar
-                            </Button>
-                        </div>
-                    )}
-                </ListGroup.Item>
-            ))}
-        </ListGroup>
+                {offers.length === 0 ? (
+                    <Alert variant="secondary" className="mt-3 mb-0">
+                        Aún no hay ofertas para esta tarea.
+                    </Alert>
+                ) : (
+                    <ListGroup className="mt-3">
+                        {offers.map((o) => (
+                            <ListGroup.Item key={o.id} className="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div className="fw-semibold">
+                                        {usernames[o.tasker_id] ?? `Tasker #${o.tasker_id}`}{" "}
+                                        <Badge bg={o.status === "accepted" ? "success" : (o.status === "pending" ? "secondary" : "info")}>
+                                            {o.status || "pending"}
+                                        </Badge>
+                                    </div>
+                                    <div>Monto: <strong>${Number(o.amount).toLocaleString()}</strong></div>
+                                    {o.message && <div className="text-muted small">“{o.message}”</div>}
+                                </div>
+
+                                <div>
+                                    {canAccept && o.status !== "accepted" && (
+                                        <Button
+                                            size="sm"
+                                            variant="primary"
+                                            onClick={() => acceptOffer(o)}
+                                            disabled={acceptingId === o.id}
+                                        >
+                                            {acceptingId === o.id ? "Aceptando..." : "Aceptar oferta"}
+                                        </Button>
+                                    )}
+                                </div>
+                            </ListGroup.Item>
+                        ))}
+                    </ListGroup>
+                )}
+            </Card.Body>
+        </Card>
     );
 }

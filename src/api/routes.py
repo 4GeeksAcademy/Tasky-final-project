@@ -162,7 +162,13 @@ def update_profile(user_id):
 @api.route("/tasks", methods=["GET"])
 def list_tasks():
     tasks = Task.query.all()
-    return jsonify([t.serialize_all_data() for t in tasks]), 200
+    out = []
+    for t in tasks:
+        d = t.serialize_all_data()
+        deal = _latest_deal(t.id)
+        d["assigned_tasker_id"] = deal.tasker_id if deal else None
+        out.append(d)
+    return jsonify(out), 200
 
 
 @api.route("/tasks", methods=["POST"])
@@ -189,7 +195,14 @@ def get_task(task_id):
     t = Task.query.get(task_id)
     if not t:
         return jsonify({"error": "Tarea no encontrada"}), 404
-    return jsonify(t.serialize_all_data()), 200
+
+    data = t.serialize_all_data()
+
+    # ← AÑADIDO: asignado desde el último deal (fuente de verdad)
+    deal = _latest_deal(task_id)
+    data["assigned_tasker_id"] = deal.tasker_id if deal else None
+
+    return jsonify(data), 200
 
 
 @api.route("/tasks/<int:task_id>", methods=["DELETE"])
@@ -409,6 +422,7 @@ def create_deal(task_id):
     data = request.get_json() or {}
     tasker_id = data.get("tasker_id")
     offer_id = data.get("offer_id")
+    fixed_price = data.get("fixed_price")  # opcional
 
     if not tasker_id:
         return jsonify({"error": "tasker_id es obligatorio"}), 400
@@ -418,20 +432,43 @@ def create_deal(task_id):
     offer = TaskOffered.query.filter_by(id=offer_id, task_id=task_id).first()
     if not offer:
         return jsonify({"error": "Offer no encontrada para esta tarea"}), 400
-
-    if hasattr(offer, "tasker_id") and offer.tasker_id != tasker_id:
+    if offer.tasker_id != tasker_id:
         return jsonify({"error": "offer_id no corresponde al tasker indicado"}), 400
 
-    deal = TaskDealed.query.filter_by(
-        task_id=task_id, tasker_id=tasker_id).first()
+    # ¿ya hay deal? (solo 1 por task)
+    deal = TaskDealed.query.filter_by(task_id=task_id).first()
     if not deal:
+        # inferir FKs y precio desde la offer/task
         deal = TaskDealed(
-            task_id=task_id,
-            tasker_id=tasker_id,
+            task_id=task.id,
             offer_id=offer.id,
-            status="pending"
+            client_id=task.publisher_id,
+            tasker_id=offer.tasker_id,
+            fixed_price=Decimal(
+                str(fixed_price)) if fixed_price is not None else offer.amount,
+            status="accepted",
+            accepted_at=date.today()
         )
         db.session.add(deal)
+    else:
+        # actualizar por consistencia si ya había deal
+        deal.offer_id = offer.id
+        deal.client_id = task.publisher_id
+        deal.tasker_id = offer.tasker_id
+        if not deal.fixed_price:
+            deal.fixed_price = offer.amount
+        deal.status = "accepted"
+        if not deal.accepted_at:
+            deal.accepted_at = date.today()
+
+    # reflejar en Task → CLAVE para canChat
+    # tu app usa "assigned" post-aceptación
+    task.status = "assigned"
+    task.assigned_at = task.assigned_at or date.today()
+    task.assigned_tasker_id = offer.tasker_id    # <<=== IMPORTANTE
+
+    # marcar offer como aceptada
+    offer.status = "accepted"
 
     try:
         db.session.commit()
@@ -442,13 +479,7 @@ def create_deal(task_id):
             "detail": str(getattr(e, "orig", e))
         }), 500
 
-    return jsonify({
-        "id": deal.id,
-        "task_id": deal.task_id,
-        "tasker_id": deal.tasker_id,
-        "offer_id": deal.offer_id,
-        "status": deal.status
-    }), 201
+    return jsonify(deal.serialize()), 201
 
 
 @api.route("/tasks/<int:task_id>/deal", methods=["GET"])
@@ -463,3 +494,32 @@ def get_latest_deal_for_task(task_id):
 @api.get("/meta/statuses")
 def meta_statuses():
     return jsonify(statuses_as_dict()), 200
+
+@api.route("/tasks/<int:task_id>/complete", methods=["PUT"])
+def complete_task(task_id):
+    task = Task.query.get(task_id)
+    if not task:
+        return jsonify({"error": "Tarea no encontrada"}), 404
+
+    deal = _latest_deal(task_id)
+    if not deal:
+        return jsonify({"error": "No hay deal para esta tarea"}), 400
+
+    # marcar estados
+    task.status = "completed"
+    task.completed_at = date.today()
+
+    deal.status = "completed"
+    if not deal.delivered_at:
+        deal.delivered_at = date.today()
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "No se pudo completar la tarea"}), 500
+
+    # enriquecer respuesta con assigned_tasker_id desde el deal (como ya haces)
+    data = task.serialize_all_data()
+    data["assigned_tasker_id"] = deal.tasker_id
+    return jsonify(data), 200

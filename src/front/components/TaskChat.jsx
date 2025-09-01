@@ -105,7 +105,7 @@ export default function TaskChat({ taskId, user, demo = false }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 // credentials: "include", // si usas cookies de sesión
-                body: JSON.stringify({ body: textTrim }),
+                body: JSON.stringify({ body: textTrim, sender_id: user?.id }),
             });
             const ct = res.headers.get("content-type") || "";
             const payload = ct.includes("application/json") ? await res.json() : await res.text();

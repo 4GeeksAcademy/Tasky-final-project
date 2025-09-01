@@ -14,7 +14,6 @@ export default function ReviewTaskerModal({
     onCreated,
     demo = false,
 }) {
-    // Desde el contexto (si el provider está presente)
     const session = useTaskSession?.() || null;
     const effTaskId = taskId ?? session?.taskId ?? null;
     const effWorkerId = taskerId ?? session?.assignedTaskerId ?? null;
@@ -24,15 +23,18 @@ export default function ReviewTaskerModal({
     const [comment, setComment] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const [locked, setLocked] = useState(false); // 🔒 ya calificado (éxito o 409)
 
     const reset = () => {
         setRating(5);
         setComment("");
         setError("");
+        setLocked(false);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (locked) return; // evita doble submit cuando ya está bloqueado
         setSubmitting(true);
         setError("");
 
@@ -44,7 +46,6 @@ export default function ReviewTaskerModal({
             if (!effWorkerId) throw new Error("Falta worker_id (tasker asignado)");
 
             if (demo) {
-                // DEMO: simula POST OK
                 await new Promise((r) => setTimeout(r, 600));
                 const fake = {
                     id: Math.floor(Math.random() * 10000),
@@ -56,7 +57,8 @@ export default function ReviewTaskerModal({
                     created_at: new Date().toISOString(),
                 };
                 onCreated?.(fake);
-                reset();
+                setLocked(true);   // 🔒 bloquea el modal tras “guardar”
+                // Opcional: cerrar automáticamente
                 onHide?.();
                 return;
             }
@@ -64,7 +66,6 @@ export default function ReviewTaskerModal({
             const base = (API_BASE || "").replace(/\/+$/, "");
             const url = `${base}/api/tasks/${effTaskId}/reviews`;
 
-            // Construir body (incluye deal_id solo si lo tenemos)
             const body = {
                 target: "tasker",
                 task_id: Number(effTaskId),
@@ -74,9 +75,6 @@ export default function ReviewTaskerModal({
             };
             if (effDealId) body.deal_id = Number(effDealId);
 
-            // Logs de desarrollo (borrar al final)
-            console.log("POST review →", url, body);
-
             const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -85,11 +83,18 @@ export default function ReviewTaskerModal({
 
             const ct = res.headers.get("content-type") || "";
             const raw = await res.text();
-            console.log("Status:", res.status, "CT:", ct, "Raw:", raw);
-
             const payload = ct.includes("application/json") ? JSON.parse(raw) : raw;
 
             if (!res.ok) {
+                // 🔴 Manejo especial del 409: ya existe review → bloquear, avisar arriba y no tratar como error fatal
+                if (res.status === 409) {
+                    setLocked(true);
+                    setError("");                 // limpia error visible
+                    onCreated?.();                // avisa al padre para deshabilitar botón
+                    // Opcional: auto-cerrar
+                    onHide?.();
+                    return;
+                }
                 const msg =
                     typeof payload === "string"
                         ? `HTTP ${res.status}: ${payload.slice(0, 160)}`
@@ -98,7 +103,8 @@ export default function ReviewTaskerModal({
             }
 
             onCreated?.(payload);
-            reset();
+            setLocked(true); // 🔒 bloquea tras éxito
+            // Opcional: auto-cerrar
             onHide?.();
         } catch (err) {
             console.error("Review POST failed:", err);
@@ -110,6 +116,7 @@ export default function ReviewTaskerModal({
 
     const canSubmit =
         !submitting &&
+        !locked &&                 // 🔒 no permitir enviar si ya calificado
         comment.trim().length > 0 &&
         Number(rating) >= 1 &&
         Number(rating) <= 5;
@@ -124,7 +131,12 @@ export default function ReviewTaskerModal({
                 </Modal.Header>
 
                 <Modal.Body>
-                    {error && (
+                    {locked && (
+                        <Alert variant="success" className="mb-3">
+                            Este tasker ya fue calificado para esta tarea.
+                        </Alert>
+                    )}
+                    {error && !locked && (
                         <Alert variant="danger" className="mb-3">
                             {error}
                         </Alert>
@@ -135,7 +147,7 @@ export default function ReviewTaskerModal({
                         <Form.Select
                             value={rating}
                             onChange={(e) => setRating(e.target.value)}
-                            disabled={submitting}
+                            disabled={submitting || locked}
                             required
                         >
                             <option value={5}>5 - Excelente</option>
@@ -154,19 +166,18 @@ export default function ReviewTaskerModal({
                             placeholder="Describe brevemente tu experiencia"
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
-                            disabled={submitting}
+                            disabled={submitting || locked}
                             required
                         />
                     </Form.Group>
-
                 </Modal.Body>
 
                 <Modal.Footer>
                     <Button variant="secondary" onClick={onHide} disabled={submitting}>
-                        Cancelar
+                        Cerrar
                     </Button>
                     <Button type="submit" variant="primary" disabled={!canSubmit}>
-                        {submitting ? "Guardando..." : "Guardar calificación"}
+                        {locked ? "Ya calificado" : (submitting ? "Guardando..." : "Guardar calificación")}
                     </Button>
                 </Modal.Footer>
             </Form>
