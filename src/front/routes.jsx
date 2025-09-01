@@ -48,11 +48,11 @@ export const router = createBrowserRouter([
       { path: "/u/:username", element: <ProfilePublic /> }, // <- perfil público
       { path: "/browse", element: <Browse /> },
       { path: "/post", element: <PostTask /> },
+      { path: "/newtask", element: <NewTask /> },
 
       // Páginas del template
       { path: "/single/:theId", element: <Single /> },
       { path: "/demo", element: <Demo /> },
-      { path: "/newtask", element: <NewTask /> },
       { path: "/admin", element: <Admin /> },
       { path: "/myoffers", element: <MyOffers /> },
 
@@ -62,6 +62,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/account", element: <ProfilePrivate /> },
           { path: "/profile", element: <Profile /> },
+          
         ],
       },
 
