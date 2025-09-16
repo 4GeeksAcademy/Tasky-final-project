@@ -5,7 +5,7 @@ import { Spinner, Alert, Container, Row, Col, Card, Badge, Button, Tabs, Tab } f
 import SendOfferModal from "../components/SendOfferModal";
 import ReviewTaskerModal from "../components/ReviewTaskerModal";
 import TaskChat from "../components/TaskChat";
-import OfferList from "../components/OfferList";              // ← NUEVO
+import OfferList from "../components/OfferList";
 import { useStore } from "../hooks/useGlobalReducer";
 import { TaskSessionProvider } from "../context/TaskSessionContext";
 
@@ -64,7 +64,7 @@ export default function TaskDetail() {
     load();
   }, [taskId]);
 
-  // 1.b) cargar publisher y tasker asignado
+  // 1.b) cargar publisher y tasker asignado Cada vez que cambie el objeto task (después de GET /api/tasks/:id o tras aceptar una oferta que setea
   useEffect(() => {
     if (!task) return;
     const base = (API_BASE || "").replace(/\/+$/, "");
@@ -199,7 +199,7 @@ export default function TaskDetail() {
     }
   };
 
-  // ← NUEVO: cuando aceptas oferta desde OfferList
+  // cuando aceptas oferta desde OfferList
   const handleOfferAccepted = (deal) => {
     // deal trae: task_id, tasker_id, status='accepted', etc.
     setTask((prev) => {
