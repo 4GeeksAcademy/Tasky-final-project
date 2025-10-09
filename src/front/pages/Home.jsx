@@ -1,6 +1,7 @@
 // src/front/pages/Home.jsx
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useStore } from "../hooks/useGlobalReducer"
 import { listTasks } from "../api/tasks"         // ya existe
 import "./home.css"                              // estilos nuevos y ligeros
@@ -50,7 +51,7 @@ export default function Home() {
 						Publica una tarea en minutos y recibe ofertas de taskers verificados.
 					</p>
 					<div className="hero__cta">
-						<Link to="/post" className="btn btn--primary">Post a task</Link>
+						<Link to="/newtask" className="btn btn--primary">Post a task</Link>
 						<Link to="/browse" className="btn btn--primary">Browse tasks</Link>
 					</div>
 
@@ -142,8 +143,16 @@ function Step({ emoji, title, children }) {
 }
 
 function TaskCard({ task }) {
+	const nav = useNavigate();
 	return (
-		<article className="card">
+		<article
+			className="card"
+			role="button"
+			tabIndex={0}
+			onClick={() => nav(`/tasks/${task.id}`)}
+			onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && nav(`/tasks/${task.id}`)}
+			style={{ cursor: "pointer" }}
+		>
 			<div className="card__head">
 				<h3 className="card__title">{task.title}</h3>
 				{task.price != null && <span className="chip">${task.price}</span>}
@@ -156,5 +165,5 @@ function TaskCard({ task }) {
 				</span>
 			</div>
 		</article>
-	)
+	);
 }

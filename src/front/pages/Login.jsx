@@ -22,22 +22,7 @@ export default function Login() {
         setError("");
         setLoading(true);
         try {
-            if (actions?.login) {
-                // Si tu store ya tiene login, úsalo
-                await actions.login({ email, password });
-            } else if (BASE) {
-                // Fallback simple
-                const r = await fetch(`${BASE}/api/login`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email, password }),
-                });
-                const data = await r.json().catch(() => ({}));
-                if (!r.ok) throw new Error(data?.message || "Credenciales inválidas");
-                localStorage.setItem("tasky_user", JSON.stringify(data));
-            } else {
-                throw new Error("Configura VITE_BACKEND_URL o implementa actions.login");
-            }
+            await actions.login({ email, password });
             nav(next, { replace: true });
         } catch (err) {
             setError(err.message || "Error al iniciar sesión");

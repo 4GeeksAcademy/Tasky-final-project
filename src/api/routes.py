@@ -5,6 +5,7 @@ from datetime import datetime, date
 
 from flask import Blueprint, jsonify, request
 from flask_cors import CORS
+from sqlalchemy import func
 
 from api.models import (
     db, User, Task, Profile,
@@ -20,7 +21,8 @@ api = Blueprint("api", __name__)
 FRONT = os.getenv(
     "FRONTEND_ORIGIN",
     # default para Codespaces (puerto 3000 del front)
-    "https://urban-space-cod-gj7pgr6p66rhv959-3000.app.github.dev"
+    "https://opulent-space-robot-qjpxw46xx4vc9g56-3000.app.github.dev"
+    # "https://urban-space-cod-gj7pgr6p66rhv959-3000.app.github.dev"
 )
 
 # Habilita CORS para todas las rutas de este blueprint
@@ -43,6 +45,24 @@ def health():
 # =========================
 # USERS
 # =========================
+
+
+@api.post("/login")
+def login():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+    if not email or not password:
+        return jsonify({"message": "email y password requeridos"}), 400
+
+    # Case-insensitive match on email
+    u = User.query.filter(func.lower(User.email) == email).first()
+    if not u or u.password != password:  # DEV ONLY: plaintext comparison
+        return jsonify({"message": "Email/password inválidas"}), 401
+
+    # Return the user (no password) – your serialize() already hides password
+    return jsonify(u.serialize()), 200
 
 
 @api.route("/users", methods=["GET"])
@@ -154,6 +174,68 @@ def update_profile(user_id):
     db.session.commit()
     return jsonify(prof.serialize()), 200
 
+
+@api.get("/public/profiles/<string:username>")
+def public_profile_by_username(username):
+    # 1) Buscar usuario por username (case-insensitive)
+    u = User.query.filter(User.username.ilike(username)).first()
+    if not u:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    # 2) Obtener Profile por PK=user_id (puede no existir)
+    prof = Profile.query.get(u.id)
+
+    # 3) Métricas opcionales (útiles para UI)
+    #    - tasks publicadas por el usuario
+    #    - tasks completadas
+    #    - reviews recibidas (y rating promedio)
+    tasks_published = Task.query.filter_by(publisher_id=u.id).count()
+
+    # “Completadas” a través del último deal con status completed
+    tasks_completed = (
+        TaskDealed.query
+        .filter(TaskDealed.tasker_id == u.id, TaskDealed.status == "completed")
+        .count()
+    )
+
+    reviews_q = Review.query.filter(Review.worker_id == u.id)
+    reviews_count = reviews_q.count()
+    rating_avg = (
+        db.session.query(func.avg(Review.rate))
+        .filter(Review.worker_id == u.id)
+        .scalar()
+    ) or 0.0
+
+    # 4) Armar respuesta (solo campos públicos)
+    out = {
+        "user": {
+            "id": u.id,
+            "username": u.username,
+            # Si NO quieres exponer email públicamente, bórralo:
+            "email": u.email
+        },
+        "profile": {
+            "name": (prof.name if prof else u.username),
+            "last_name": (prof.last_name if prof else ""),
+            "avatar": (prof.avatar if prof else ""),
+            "city": (prof.city if prof else ""),
+            "birth_date": (prof.birth_date.isoformat() if prof and prof.birth_date else None),
+            "bio": (prof.bio if prof else ""),
+            "skills": (prof.skills if prof else ""),
+            # puedes decidir la fuente
+            "rating_avg": (prof.rating_avg if prof else rating_avg),
+        },
+        "stats": {
+            "tasks_published": tasks_published,
+            "tasks_completed": tasks_completed,
+            "reviews_count": reviews_count,
+            "rating_avg": float(rating_avg)
+        },
+        "created_at": (prof.created_at.isoformat() if prof and prof.created_at else None)
+    }
+
+    return jsonify(out), 200
+
 # =========================
 # TASKS (mínimo viable)
 # =========================
@@ -255,6 +337,49 @@ def create_offer(task_id):
         return jsonify({"error": "No se pudo guardar la oferta"}), 500
 
     return jsonify(offer.serialize()), 201
+
+# GET /api/users/<user_id>/tasks
+
+
+@api.get("/users/<int:user_id>/tasks")
+def list_tasks_by_publisher(user_id):
+    # 404 if user doesn’t exist
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+
+    q = Task.query.filter_by(publisher_id=user_id)
+
+    # Optional filters: status, from_date, to_date (YYYY-MM-DD)
+    status = request.args.get("status")
+    if status:
+        q = q.filter(Task.status == status)
+
+    def _parse(d):
+        try:
+            return datetime.strptime(d, "%Y-%m-%d").date()
+        except Exception:
+            return None
+
+    from_date = _parse(request.args.get("from_date", ""))
+    to_date = _parse(request.args.get("to_date", ""))
+
+    if from_date:
+        # adjust field if different
+        q = q.filter(Task.created_at >= from_date)
+    if to_date:
+        q = q.filter(Task.created_at <= to_date)
+
+    tasks = q.order_by(Task.id.desc()).all()
+
+    out = []
+    for t in tasks:
+        d = t.serialize_all_data()
+        deal = _latest_deal(t.id)
+        d["assigned_tasker_id"] = deal.tasker_id if deal else None
+        out.append(d)
+
+    return jsonify(out), 200
 
 
 @api.route("/tasks/<int:task_id>/offers", methods=["GET"])
@@ -494,6 +619,7 @@ def get_latest_deal_for_task(task_id):
 @api.get("/meta/statuses")
 def meta_statuses():
     return jsonify(statuses_as_dict()), 200
+
 
 @api.route("/tasks/<int:task_id>/complete", methods=["PUT"])
 def complete_task(task_id):

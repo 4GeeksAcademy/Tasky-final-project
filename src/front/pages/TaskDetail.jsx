@@ -274,8 +274,10 @@ export default function TaskDetail() {
               <Card.Body>
                 {task.price != null && <p><strong>Precio:</strong> ${Number(task.price).toLocaleString()}</p>}
                 {task.location && <p><strong>Ubicación:</strong> {task.location}</p>}
-                <p><strong>Publicado por:</strong> {publisher?.username || task.publisher_id}</p>
-                <Link to={`/u/${task.publisher_id}`}>Ver perfil</Link>
+                <p><strong>Publicado por:</strong> {publisher?.username ?? task.publisher_id}</p>
+                {publisher?.username && (
+                  <Link to={`/u/${encodeURIComponent(publisher.username)}`}>Ver perfil</Link>
+                )}
                 {task.assigned_tasker_id && (
                   <p className="mt-2"><strong>Tasker asignado:</strong> {tasker?.username || task.assigned_tasker_id}</p>
                 )}

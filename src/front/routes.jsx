@@ -9,10 +9,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import ProfilePrivate from "./pages/ProfilePrivate";
-import ProfilePublic from "./pages/ProfilePublic";
+import ProfilePublisher from "./pages/ProfilePublisher";
 import AuthCallback from "./pages/AuthCallback";
 import Browse from "./pages/Browse";
-import PostTask from "./pages/PostTask";
 import TaskDetail from "./pages/TaskDetail";
 import Help from "./pages/Help";              // ✅ Ayuda con subrutas
 import MyOffers from "./components/MyOffers"; // ✅ Ofertas del usuario
@@ -22,6 +21,7 @@ import Single from "./pages/Single";
 import Demo from "./pages/Demo";
 import NewTask from "./pages/NewTask";
 import Admin from "./pages/Admin";
+import MyTasks from "./pages/MyTasks";
 
 const DashboardClient = () => <div>Mis tareas (Cliente)</div>;
 const DashboardTasker = () => <div>Mis ofertas (Proveedor)</div>;
@@ -47,11 +47,10 @@ export const router = createBrowserRouter([
       { path: "/login", element: <Login /> },
       { path: "/register", element: <Register /> },
       { path: "/auth/callback", element: <AuthCallback /> },
-      { path: "/u/:username", element: <ProfilePublic /> },
+      { path: "/u/:username", element: <ProfilePublisher /> },
       { path: "/browse", element: <Browse /> },
-      { path: "/post", element: <PostTask /> },
-      { path: "/task/:taskId", element: <TaskDetail /> },
-      { path: "/help/*", element: <Help /> },             
+      { path: "/tasks/:taskId", element: <TaskDetail /> },
+      { path: "/help/*", element: <Help /> },
 
       // Páginas del template (opcionales)
       { path: "/single/:theId", element: <Single /> },
@@ -68,6 +67,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/account", element: <ProfilePrivate /> },
           { path: "/profile", element: <Profile /> },
+          { path: "/users/:user_id/tasks", element: <MyTasks /> },
         ],
       },
 

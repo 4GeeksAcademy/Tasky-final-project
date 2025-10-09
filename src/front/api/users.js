@@ -20,6 +20,22 @@ async function fetchJSON(input, init) {
   return payload ?? {};
 }
 
+// Público / sin cookies → evita CORS con credenciales
+async function fetchJSONPublic(input, init) {
+  const r = await fetch(input, { credentials: "omit", ...init });
+  let payload = null;
+  try {
+    payload = await r.json();
+  } catch {}
+  if (!r.ok) {
+    const msg =
+      (payload && (payload.error || payload.message)) ||
+      r.statusText ||
+      "Request failed";
+    throw new Error(msg);
+  }
+  return payload ?? {};
+}
 // ---------- USERS ----------
 export function listUsers() {
   return fetchJSON(`${BASE}/api/users`);
@@ -32,6 +48,11 @@ export function getUser(id) {
 export function getUserByUsername(username) {
   return fetchJSON(
     `${BASE}/api/users/by-username/${encodeURIComponent(username)}`
+  );
+}
+export function getPublicProfileByUsername(username) {
+  return fetchJSONPublic(
+    `${BASE}/api/public/profiles/${encodeURIComponent(username)}`
   );
 }
 

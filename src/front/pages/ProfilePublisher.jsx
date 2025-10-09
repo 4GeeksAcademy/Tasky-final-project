@@ -1,26 +1,19 @@
 // src/front/pages/ProfilePublic.jsx
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { getUserByUsername, getUserProfile } from "../api/users";
+import { getPublicProfileByUsername } from "../api/users";
 import "./profile-public.css";
 
 export default function ProfilePublic() {
     const { username } = useParams();
-    const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null);
+    const [payload, setPayload] = useState(null);
     const [error, setError] = useState("");
 
     useEffect(() => {
         (async () => {
             try {
-                const u = await getUserByUsername(username);
-                setUser(u);
-                try {
-                    const p = await getUserProfile(u.id);
-                    setProfile(p);
-                } catch {
-                    setProfile(null);
-                }
+                const data = await getPublicProfileByUsername(username);
+                setPayload(data);
             } catch (e) {
                 setError(e.message || "Usuario no encontrado");
             }
@@ -36,17 +29,23 @@ export default function ProfilePublic() {
         );
     }
 
-    if (!user) return <div className="container"><div className="profile-card">Cargando...</div></div>;
-
-    const name = `${profile?.name || user.username}${profile?.last_name ? " " + profile.last_name[0] + "." : ""}`;
+    if (!payload) return <div className="container"><div className="profile-card">Cargando...</div></div>;
+    const { user = {}, profile = {}, stats = {} } = payload || {};
+    const usernameSafe = user?.username ?? "user";
+    const name =
+        (profile?.name || usernameSafe) +
+        (profile?.last_name ? ` ${profile.last_name[0]}.` : "");
     const city = profile?.city || "—";
-    const email = user.email;
-    const rating = profile?.rating_avg ?? 0;
+    const email = user.email || null;
+    const rating = Number(profile?.rating_avg ?? stats?.rating_avg ?? 0) || 0;
     const bio = profile?.bio || "Sin descripción aún.";
-    const skills = (profile?.skills || "")
+    const skills = String(profile?.skills || "")
         .split(",")
         .map(s => s.trim())
         .filter(Boolean);
+    const avatarSrc =
+        profile?.avatar ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(usernameSafe)}&background=2563eb&color=fff`;
 
     return (
         <div className="container">
@@ -58,7 +57,7 @@ export default function ProfilePublic() {
                 <header className="header">
                     <img
                         className="avatar"
-                        src={profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=2563eb&color=fff`}
+                        src={avatarSrc}
                         alt={user.username}
                         loading="lazy"
                     />
@@ -67,12 +66,17 @@ export default function ProfilePublic() {
                         <div className="meta">
                             <span>{city}</span>
                             <span className="dot">•</span>
-                            <a href={`mailto:${email}`}>{email}</a>
                         </div>
                         <div className="rating">
                             <span className="stars">{renderStars(rating)}</span>
                             <span className="rating-n">{rating ? rating.toFixed(1) : "Nuevo"}</span>
                         </div>
+                        {stats && (
+                            <div className="muted" style={{ marginTop: 8 }}>
+                                {stats.tasks_completed} tasks completadas • {stats.reviews_count} reviews
+                            </div>
+                        )}
+
                     </div>
                     <div className="actions">
                         <Link to="/browse" className="btn">Browse tasks</Link>
@@ -85,12 +89,8 @@ export default function ProfilePublic() {
                         <h2>About</h2>
                         <p className="about">{bio}</p>
 
-                        <h2>Skills</h2>
-                        <div className="chips">
-                            {skills.length ? skills.map((s, i) => (
-                                <span key={i} className="chip">{s}</span>
-                            )) : <span className="muted">Aún no hay skills</span>}
-                        </div>
+                        <h2>City</h2>
+                        <p className="city">{city}</p>
                     </section>
 
                     <aside className="sidebar">
@@ -100,11 +100,6 @@ export default function ProfilePublic() {
                                 <li>✓ Email</li>
                                 <li>✓ Cuenta creada</li>
                             </ul>
-                        </div>
-
-                        <div className="card">
-                            <h3>Contacto</h3>
-                            <a className="btn btn-outline" href={`mailto:${email}`}>Enviar correo</a>
                         </div>
                     </aside>
                 </div>
